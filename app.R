@@ -105,6 +105,8 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                                          selectizeInput("pollutant",label = strong("Select Pollutant:",
                                                                                style = "color:white;font-weight: bold;font-size:1.3em;"),
                                                         choices = df$AQS_PARAMETER_DESC,multiple = F),
+                                         HTML("<font color = 'white'>Table to help understand AQI</font>"),br(),
+                                         tags$img(src= "Capture.png",style = "max-width: 100%; width: 100%; height: auto;"),
                                          HTML("<font color = 'white'>Author: Kevin Zolea\n (kevin.zolea@gmail.com)</font>")),
                             mainPanel(plotlyOutput("plot1")%>%withSpinner(type = 5, color = "blue"),
                                       plotlyOutput("plot2")%>%withSpinner(type = 5, color = "blue")))))
@@ -185,13 +187,13 @@ server <- function(input, output,session) {
   output$plot1<-renderPlotly({
     p<-ggplot(data = df_final())+
       geom_line(aes(x=Date,y=val,color = Site_Name))+
-      ggtitle(paste(input$pollutant," (",df_final()$UNITS,")"," Concentration (2018)",sep = ""))+
+      ggtitle(paste(input$pollutant,"(",df_final()$UNITS,")"," Concentration (2018)",sep = ""))+
       shiny_plot_theme 
       
     
     
     ggplotly(p,dynamicTicks = "x",tooltip = "text")%>%
-      config(collaborate = F,displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
+      config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
                                                                          "hoverCompareCartesian","select2d"))
     
     
@@ -208,7 +210,7 @@ server <- function(input, output,session) {
     
     
     ggplotly(g,dynamicTicks = "x",tooltip = "text")%>%
-      config(collaborate = F,displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
+      config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
                                                                          "hoverCompareCartesian","select2d"))
     
   })
