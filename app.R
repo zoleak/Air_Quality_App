@@ -15,11 +15,21 @@ library("sf")
 library("readr")
 library("plotly")
 library("shinyWidgets")
+library("readxl")
 ### Read in site information dataset for monitoring sites in NJ ###
 sites_nj<-read_csv("Ambient_Air_Quality_Monitors_of_New_Jersey.csv",col_names = T)%>%
   dplyr::select(-X,-Y,-OBJECTID,-AIRS_CODE)
-### Read in pollutant data for 2018 ###
-df<-read_csv("air_quality_data.csv",col_names = T)
+### Read in pollutant data from 1990-2018 ###
+ozone<-read_xlsx("ozone_1990_2018.xlsx",col_names = T)
+SO2<-read_xlsx("SO2_1990_2018.xlsx",col_names = T)
+NO2<-read_xlsx("NO2_1990_2018.xlsx",col_names = T)
+PM2.5<-read_xlsx("PM2.5_1999_2018.xlsx",col_names = T)
+### Get rid of * inside annual average column and make column numeric ###
+PM2.5$weighted_arithmetic_meanC = as.numeric(gsub("\\*", "", PM2.5$weighted_arithmetic_meanC))
+CO<-read_xlsx("CO_1990_2018.xlsx",col_names = T)
+### Create a list of all the dataframes ###
+mylist = list(ozone=ozone,SO2=SO2,NO2=NO2,CO=CO,
+              PM2.5=PM2.5)
 ### Read in shapefile of NJ counties ###
 counties_nj<-st_read(dsn = getwd(),layer = "NJ_counties")
 ### Change projection to work with leaflet map ###
@@ -40,6 +50,7 @@ shiny_plot_theme<- theme_linedraw()+
 ###############################################################################
 ### Define UI for application ###
 ui <- navbarPage(theme = shinytheme("yeti"),
+                 windowTitle = "NJ Air Quality Data Viewer",
                  tags$b("NJ Air Quality Data Viewer"),
                  tabPanel("About App",
                               tags$head(
@@ -47,11 +58,8 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                                 includeCSS("C:/Users/kzolea/Desktop/Air_Quality_App/www/styles.css")),
                               class = "my_style_1",
                               h2("Introduction:"),
-                              h3("The purpose of this app is to obtain data from the 
-                                  Environmental Protection Agency's (EPA) Air Quality System Data Mart. 
-                                  The EPA provides access to outdoor air quality data collected from state,
-                                 local, and tribal monitoring agencies across the United States. This app will focus
-                                 on analyzing data for the monitoring sites throughout New Jersey."),
+                              h3("The purpose of this app is to understand the different trends for the criteria air pollutants throughtout the
+                                 state's air quality network. Users can filter the data to see each station's criteria pollutant trends."),
                           useShinydashboard(),
                           br(),
                           h2("Learn more about air quality:"),
@@ -80,8 +88,12 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                                      )
                         ),
                  tabPanel("Data",
+                          tabPanel("Data",
+                                   selectInput(inputId="pollutant",label="Select Pollutant:", 
+                                               choices=c("ozone"="ozone","SO2"="SO2","NO2"="NO2","CO"="CO",
+                                                         "PM2.5"="PM2.5")),
                           DT::dataTableOutput("data")%>%
-                            withSpinner(type = 5, color = "blue")),
+                            withSpinner(type = 5, color = "blue"))),
                  tabPanel("Map",
                           panel("For more information on NJ's ambient air monitoring network",a("click here",
                                 href= "http://www.njaqinow.net/NJ-Network-Plan-2018.pdf",target = "_blank"),
@@ -102,24 +114,31 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                                          #selectInput("sites",label = strong("Select Air Quality Site:",
                                           #                                  style = "color:white;font-weight: bold;font-size:1.3em;"),
                                           #           choices = df$Site_Name),
-                                         selectizeInput("pollutant",label = strong("Select Pollutant:",
-                                                                               style = "color:white;font-weight: bold;font-size:1.3em;"),
-                                                        choices = df$AQS_PARAMETER_DESC,multiple = F),
-                                         HTML("<font color = 'white'>Table to help understand AQI</font>"),br(),
-                                         tags$img(src= "Capture.png",style = "max-width: 100%; width: 100%; height: auto;"),
-                                         HTML("<font color = 'white'>Author: Kevin Zolea\n (kevin.zolea@gmail.com)</font>")),
-                            mainPanel(plotlyOutput("plot1")%>%withSpinner(type = 5, color = "blue"),
-                                      plotlyOutput("plot2")%>%withSpinner(type = 5, color = "blue")))))
+                                         #selectizeInput("pollutant",label = strong("Select Pollutant:",
+                                         #                                      style = "color:white;font-weight: bold;font-size:1.3em;"),
+                                         #               choices = df$AQS_PARAMETER_DESC,multiple = F),
+                                         selectInput(inputId="pollutant2",label=strong("Select Pollutant:",
+                                                                                       style = "color:white;font-weight: bold;font-size:1.3em;"),             
+                                                     choices=c("ozone"="ozone","SO2"="SO2","NO2"="NO2","CO"="CO",
+                                                               "PM2.5"="PM2.5")),
+                                         HTML("<font color = 'white'>Author: Kevin Zolea\n (kevin.zolea@gmail.com)</font>"),br(),
+                                         tags$a(href="https://www.nj.gov/dep/", target="_blank",
+                                                img(width= 100,height = 100,src="https://www.nj.gov/dep/awards/images/deplogoB.jpg",class="road_pics"))),
+                            mainPanel(plotlyOutput("plot1")%>%withSpinner(type = 5, color = "blue"))),
+                          hr(),
+                          h4("The Data provided for these plots can be found here:"),a(href="https://www.epa.gov/outdoor-air-quality-data","EPA Air Data",target="_blank"),br(),
+                          h4("To find out more about NJ's air quality data and network click",a(href="http://www.njaqinow.net/","here",target="_blank"))))
+                                      #plotlyOutput("plot2")%>%withSpinner(type = 5, color = "blue")))))
 ###############################################################################
 server <- function(input, output,session) {
 ############################################################################### 
   ### Creates a data table for the data tab ###
-  output$data <- DT::renderDataTable({
+  output$data <- DT::renderDataTable(
     
-      DT::datatable(df,filter = 'top',options = list(scrollX = TRUE,
+      DT::datatable(data.frame(mylist[input$pollutant]),filter = 'top',options = list(scrollX = TRUE,
                                                             pageLength = 100))
     
-  })
+  )
 ###############################################################################
 ### Create custom icon for markers on map ###
   aq_icon<-makeIcon(
@@ -148,26 +167,7 @@ server <- function(input, output,session) {
         options = layersControlOptions(collapsed = FALSE))
   })
 ###############################################################################      
-  ### Make reactive dataframe ###
-  
-  df_final<-reactive({
-    req(input$pollutant)
-    df%>%
-      dplyr::filter(AQS_PARAMETER_DESC == input$pollutant)
-  })
-  
-############################################################################### 
  
-  df_aqi<-reactive({
-    req(input$pollutant)
-    df%>%
-      dplyr::filter(AQS_PARAMETER_DESC == input$pollutant)%>%
-      dplyr::group_by(Date,Site_Name)%>%
-      dplyr::summarise(value = mean(DAILY_AQI_VALUE))
-  })
-  
-  
-############################################################################### 
    ### Updates Pollutant drop down based on what site is picked  ###
  # observe({
  #   req(input$sites)
@@ -182,40 +182,92 @@ server <- function(input, output,session) {
  # 
 ###############################################################################
 ###############################################################################      
-  ### Creates plot ###
+  ### Creates plots ###
   
   output$plot1<-renderPlotly({
-    p<-ggplot(data = df_final())+
-      geom_line(aes(x=Date,y=val,color = Site_Name))+
-      ggtitle(paste(input$pollutant,"(",df_final()$UNITS,")"," Concentration (2018)",sep = ""))+
-      shiny_plot_theme 
+    if(input$pollutant2 == "ozone"){
+    p<-ggplot(data = ozone)+
+      geom_line(aes(x=Year,y=fourth_max_8hr,color = Station_Name,
+                    text = paste("Station:",Station_Name)))+
+      ylab("Concentration, Parts per Million (ppm)") +
+      ggtitle(paste(input$pollutant2," Trend 4th-Highest Daily Maximum 8-Hour Concentration (ppm)",sep = ""))+
+      geom_segment(aes(x=1997,xend=2008,y=0.08,yend=0.08,
+                   text="1997 8−Hour NAAQS = 0.08 ppm"),color="red",
+                   size =1.3,linetype = "dashed")+
+      geom_segment(aes(x=2008,xend=2016,y=0.075,yend=0.075,
+                       text = "2008 8−Hour NAAQS = 0.075 ppm"),color="red",
+                   size =1.3,linetype = "dashed")+
+      geom_segment(aes(x=2016,xend=2018,y=0.070,yend=0.070,
+                       text="2016 8−Hour NAAQS"),color="red",size =1.3,linetype = "dashed")+
+      shiny_plot_theme
+
       
     
     
     ggplotly(p,dynamicTicks = "x",tooltip = "text")%>%
       config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
                                                                          "hoverCompareCartesian","select2d"))
+    }
+    else if(input$pollutant2 == "CO"){
+      p<-ggplot(data = CO)+
+        geom_line(aes(x=Year,y=second_max_8hr,color = Station_Name))+
+        ylab("Concentration, Parts per Million (ppm)") +
+        ggtitle(paste(input$pollutant2," Trend 2nd Highest 8-Hour Average Concentration (ppm)",sep = ""))+
+        geom_segment(aes(x=1990,xend=2018,y=9,yend=9),color="red",size =1.3,linetype = "dashed")+
+        shiny_plot_theme 
+      
+      
+      
+      ggplotly(p,dynamicTicks = "x",tooltip = "text")%>%
+        config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
+                                                           "hoverCompareCartesian","select2d"))
+    }
     
+    else if (input$pollutant2 == "SO2"){
+      p<-ggplot(data = SO2)+
+        geom_line(aes(x=Year,y=Percentile_99th,color = Station_Name))+
+        ggtitle(paste(input$pollutant2," Concentration",sep = ""))+
+        geom_segment(aes(x=2010,xend=2018,y=75,yend=75),color="red",size =1.3,linetype = "dashed")+
+        shiny_plot_theme 
+      
+      
+      
+      ggplotly(p,dynamicTicks = "x",tooltip = "text")%>%
+        config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
+                                                           "hoverCompareCartesian","select2d"))
+    }
+    
+    else if (input$pollutant2 == "NO2"){
+      p<-ggplot(data = NO2)+
+        geom_line(aes(x=Year,y=Percentile_98th,color = Station_Name))+
+        ggtitle(paste(input$pollutant2," Concentration",sep = ""))+
+        geom_segment(aes(x=2010,xend=2018,y=100 ,yend=100 ),color="red",size =1.3,linetype = "dashed")+
+        shiny_plot_theme 
+      
+      
+      
+      ggplotly(p,dynamicTicks = "x",tooltip = "text")%>%
+        config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
+                                                           "hoverCompareCartesian","select2d"))
+    }
+    else if (input$pollutant2 == "PM2.5"){
+      p<-ggplot(data = PM2.5)+
+        geom_line(aes(x=Year,y=weighted_arithmetic_meanC,color = Station_Name))+
+        ggtitle(paste(input$pollutant2," Concentration",sep = ""))+
+        geom_segment(aes(x=1999,xend=2013,y=15,yend=15),color="red",size =1.3,linetype = "dashed")+
+        geom_segment(aes(x=2013,xend=2018,y=12,yend=12),color="red",size =1.3,linetype = "dashed")+
+        shiny_plot_theme 
+      
+      
+      
+      ggplotly(p,dynamicTicks = "x",tooltip = "text")%>%
+        config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
+                                                           "hoverCompareCartesian","select2d"))
+    }
     
     })
-###############################################################################      
-  output$plot2<-renderPlotly({
-    g<-ggplot(data=df_aqi(),aes(x=Date,y=value,fill = Site_Name))+
-      geom_bar(stat="identity",position = position_dodge())+
-      geom_hline(aes(yintercept = 50, color = "green"))+
-      shiny_plot_theme+
-      ggtitle(paste("Average Daily Air Quality Index Value (2018)\n",input$pollutant,sep = ""))
-    
 
-    
-    
-    ggplotly(g,dynamicTicks = "x",tooltip = "text")%>%
-      config(displaylogo=F,modeBarButtonsToRemove = list("lasso2d","hoverClosestCartesian",
-                                                                         "hoverCompareCartesian","select2d"))
-    
-  })
-   
-  }
+}
 ###############################################################################
 ### Run the application 
 shinyApp(ui = ui, server = server)
