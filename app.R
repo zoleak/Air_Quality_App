@@ -89,9 +89,10 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                         ),
                  tabPanel("Data",
                           tabPanel("Data",
+                                   column(4,
                                    selectInput(inputId="pollutant",label="Select Pollutant:", 
                                                choices=c("ozone"="ozone","SO2"="SO2","NO2"="NO2","CO"="CO",
-                                                         "PM2.5"="PM2.5")),
+                                                         "PM2.5"="PM2.5"))),
                           DT::dataTableOutput("data")%>%
                             withSpinner(type = 5, color = "blue"))),
                  tabPanel("Map",
@@ -121,12 +122,12 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                                                                                        style = "color:white;font-weight: bold;font-size:1.3em;"),             
                                                      choices=c("ozone"="ozone","SO2"="SO2","NO2"="NO2","CO"="CO",
                                                                "PM2.5"="PM2.5")),
-                                         HTML("<font color = 'white'>Author: Kevin Zolea\n (kevin.zolea@gmail.com)</font>"),br(),
+                                         HTML("<font color = 'white'>Author: Kevin Zolea\n (kevin.zolea@gmail.com)</font>"),br(),br(),
                                          tags$a(href="https://www.nj.gov/dep/", target="_blank",
                                                 img(width= 100,height = 100,src="https://www.nj.gov/dep/awards/images/deplogoB.jpg",class="road_pics"))),
                             mainPanel(plotlyOutput("plot1")%>%withSpinner(type = 5, color = "blue"))),
                           hr(),
-                          h4("The Data provided for these plots can be found here:"),a(href="https://www.epa.gov/outdoor-air-quality-data","EPA Air Data",target="_blank"),br(),
+                          h4("The Data provided for these plots can be found here:",a(href="https://www.epa.gov/outdoor-air-quality-data","EPA Air Data",target="_blank")),br(),
                           h4("To find out more about NJ's air quality data and network click",a(href="http://www.njaqinow.net/","here",target="_blank"))))
                                       #plotlyOutput("plot2")%>%withSpinner(type = 5, color = "blue")))))
 ###############################################################################
@@ -210,10 +211,12 @@ server <- function(input, output,session) {
     }
     else if(input$pollutant2 == "CO"){
       p<-ggplot(data = CO)+
-        geom_line(aes(x=Year,y=second_max_8hr,color = Station_Name))+
+        geom_line(aes(x=Year,y=second_max_8hr,color = Station_Name,
+                      text = paste("Station:",Station_Name)))+
         ylab("Concentration, Parts per Million (ppm)") +
         ggtitle(paste(input$pollutant2," Trend 2nd Highest 8-Hour Average Concentration (ppm)",sep = ""))+
-        geom_segment(aes(x=1990,xend=2018,y=9,yend=9),color="red",size =1.3,linetype = "dashed")+
+        geom_segment(aes(x=1990,xend=2018,y=9,yend=9,
+                         text = "8 Hour NAAQS = 9 ppm"),color="red",size =1.3,linetype = "dashed")+
         shiny_plot_theme 
       
       
@@ -225,9 +228,12 @@ server <- function(input, output,session) {
     
     else if (input$pollutant2 == "SO2"){
       p<-ggplot(data = SO2)+
-        geom_line(aes(x=Year,y=Percentile_99th,color = Station_Name))+
-        ggtitle(paste(input$pollutant2," Concentration",sep = ""))+
-        geom_segment(aes(x=2010,xend=2018,y=75,yend=75),color="red",size =1.3,linetype = "dashed")+
+        geom_line(aes(x=Year,y=Percentile_99th,color = Station_Name,
+                      text = paste("Station:",Station_Name)))+
+        ylab("Concentration, Parts per Billion (ppb)")+
+        ggtitle(paste(input$pollutant2," Trend 99th Percentile of Daily Maximum 1-Hour Average Concentration (ppb)",sep = ""))+
+        geom_segment(aes(x=2010,xend=2018,y=75,yend=75,
+                         text = "2010 1-Hour NAAQS = 75 ppb"),color="red",size =1.3,linetype = "dashed")+
         shiny_plot_theme 
       
       
@@ -239,9 +245,12 @@ server <- function(input, output,session) {
     
     else if (input$pollutant2 == "NO2"){
       p<-ggplot(data = NO2)+
-        geom_line(aes(x=Year,y=Percentile_98th,color = Station_Name))+
-        ggtitle(paste(input$pollutant2," Concentration",sep = ""))+
-        geom_segment(aes(x=2010,xend=2018,y=100 ,yend=100 ),color="red",size =1.3,linetype = "dashed")+
+        geom_line(aes(x=Year,y=Percentile_98th,color = Station_Name,
+                      text = paste("Station:",Station_Name)))+
+        ylab("Concentration, Parts per Billion (ppb)")+
+        ggtitle(paste(input$pollutant2," Trend 98th Percentile of Daily Maximum 1-Hour Average Concentration (ppb)",sep = ""))+
+        geom_segment(aes(x=2010,xend=2018,y=100 ,yend=100,
+                         text = "2010 1-Hour NAAQS = 100 ppb"),color="red",size =1.3,linetype = "dashed")+
         shiny_plot_theme 
       
       
@@ -252,10 +261,14 @@ server <- function(input, output,session) {
     }
     else if (input$pollutant2 == "PM2.5"){
       p<-ggplot(data = PM2.5)+
-        geom_line(aes(x=Year,y=weighted_arithmetic_meanC,color = Station_Name))+
-        ggtitle(paste(input$pollutant2," Concentration",sep = ""))+
-        geom_segment(aes(x=1999,xend=2013,y=15,yend=15),color="red",size =1.3,linetype = "dashed")+
-        geom_segment(aes(x=2013,xend=2018,y=12,yend=12),color="red",size =1.3,linetype = "dashed")+
+        geom_line(aes(x=Year,y=weighted_arithmetic_meanC,color = Station_Name,
+                      text = paste("Station:",Station_Name)))+
+        ylab("Concentration, Micrograms per Cubic Meter (µg/m3)") +
+        ggtitle(paste(input$pollutant2," Trend of the Annual Average Concentration (µg/m3)",sep = ""))+
+        geom_segment(aes(x=1999,xend=2013,y=15,yend=15,
+                         text = "Annual NAAQS = 15 µg/m3"),color="red",size =1.3,linetype = "dashed")+
+        geom_segment(aes(x=2013,xend=2018,y=12,yend=12,
+                         text = "Annual NAAQS = 12 µg/m3"),color="red",size =1.3,linetype = "dashed")+
         shiny_plot_theme 
       
       
@@ -267,6 +280,8 @@ server <- function(input, output,session) {
     
     })
 
+
+  
 }
 ###############################################################################
 ### Run the application 
