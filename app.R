@@ -127,8 +127,9 @@ ui <- navbarPage(theme = shinytheme("yeti"),
                                                 img(width= 100,height = 100,src="https://www.nj.gov/dep/awards/images/deplogoB.jpg",class="road_pics"))),
                             mainPanel(plotlyOutput("plot1")%>%withSpinner(type = 5, color = "blue"))),
                           hr(),
-                          h4("The Data provided for these plots can be found here:",a(href="https://www.epa.gov/outdoor-air-quality-data","EPA Air Data",target="_blank")),br(),
-                          h4("To find out more about NJ's air quality data and network click",a(href="http://www.njaqinow.net/","here",target="_blank"))))
+                          column(width=4,h4("The Data provided for these plots can be found here:",a(href="https://www.epa.gov/outdoor-air-quality-data","EPA Air Data",target="_blank")),br(),
+                          h4("To find out more about NJ's air quality data and network click",a(href="http://www.njaqinow.net/","here",target="_blank"))),
+                          column(width=3,img(src='Capture.png', align = "center"))))
                                       #plotlyOutput("plot2")%>%withSpinner(type = 5, color = "blue")))))
 ###############################################################################
 server <- function(input, output,session) {
